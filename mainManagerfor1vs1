@@ -1,0 +1,158 @@
+
+using { /Fortnite.com/Devices }
+using { /Verse.org/Simulation }
+using { /UnrealEngine.com/Temporary/Diagnostics }
+
+# See https://dev.epicgames.com/documentation/en-us/uefn/create-your-own-device-in-verse for how to create a verse device.
+
+# A Verse-authored creative device that can be placed in a level
+game_manager := class(creative_device):
+    @editable
+    PlayerSpawners : []player_spawner_device = array{}
+    @editable
+    ItemGranter : item_granter_device = item_granter_device{}
+
+    @editable ResetButtons : []button_device = array{}
+
+    @editable ExplosionDevices : []explosive_device = array{}
+
+    @editable ButtonAudioPlayer : audio_player_device = audio_player_device{}
+
+
+
+    @editable MutatorZone : mutator_zone_device = mutator_zone_device{}
+    @editable Teleporter:teleporter_device = teleporter_device{}
+
+
+    
+    @editable GameCharacter : character_device = character_device{}
+    @editable GameCharacterDisguise : disguise_device = disguise_device{}
+
+
+    @editable ManagerCharacter : character_device = character_device{}
+    @editable ManagerDisguise : disguise_device = disguise_device{}
+
+    @editable tokens : []collectible_object_device = array{}
+    @editable XpGranterToken : accolades_device = accolades_device{}
+
+    @editable CharacteranalyticsDevice : analytics_device = analytics_device{}
+    @editable CharacterDevices : [] character_device= array{}
+
+    @editable ElimManager :elimination_manager_device = elimination_manager_device{}
+    @editable KillAccolade : accolades_device = accolades_device{}
+
+
+
+
+     var SpawnedPlayers : [player]logic = map{}
+
+    OnBegin<override>()<suspends>:void=
+        for (Spawner : PlayerSpawners):
+            Spawner.SpawnedEvent.Subscribe(OnPlayerSpawned)
+
+        for(Button : ResetButtons):
+            Button.InteractedWithEvent.Subscribe(OnButtonPressed2)
+
+        for(token : tokens):
+            token.CollectedEvent.Subscribe(OnTokenInteract)
+
+        for(CharDevice : CharacterDevices):
+            CharDevice.InteractedWithEvent.Subscribe(SumbitCharacterEvent)#sumbit an event here for the analytics device
+
+        ElimManager.EliminationEvent.Subscribe(GiveKillXp)
+
+        
+
+            
+
+        MutatorZone.AgentEntersEvent.Subscribe(OnMutatorZoneEntred)#expects value of type agent
+
+        Teleporter.TeleportedEvent.Subscribe(OnTeleported2)
+
+
+        GameCharacter.InteractedWithEvent.Subscribe(BecomeCharacter)
+        ManagerCharacter.InteractedWithEvent.Subscribe(BecomeManager)
+        
+        
+
+
+
+
+        
+    # Handle player spawns
+    OnPlayerSpawned(Agent : agent):void=
+        if (Player := player[Agent]):
+            # Check if this is the player's first spawn
+            if (not SpawnedPlayers[Player]?):
+                # Mark player as having spawned
+                if (set SpawnedPlayers[Player] = true):
+                    # Grant the item
+                    ItemGranter.GrantItem(Player)
+
+    OnResetButtonPressed(Agent : agent)<suspends>:void=
+        ButtonAudioPlayer.Play()
+        for(explodevice : ExplosionDevices):
+            explodevice.Explode(Agent)
+            Sleep(1.0)
+            explodevice.Reset()
+        
+
+
+        
+
+    OnButtonPressed2(Agent : agent):void=
+        spawn{OnResetButtonPressed(Agent)}
+
+    OnMutatorZoneEntred(Agent : agent):void=
+        Teleporter.Teleport(Agent)
+
+    OnTeleported(Agent : agent)<suspends>:void=
+        ButtonAudioPlayer.Play()
+        for(explodevice : ExplosionDevices):
+            explodevice.Explode(Agent)
+            Sleep(1.0)
+            explodevice.Reset()
+
+
+    OnTeleported2(Agent : agent):void=
+        spawn{OnTeleported(Agent)}
+
+    BecomeCharacter(Agent : agent ):void=
+        if(Player := player[Agent]):
+            GameCharacterDisguise.ApplyDisguise(Player)
+
+    BecomeManager(Agent : agent):void=
+        if(Player := player[Agent]):
+            ManagerDisguise.ApplyDisguise(Player)
+
+    OnTokenInteract(Agent : agent):void=
+        Print("Xp given to agent")
+        XpGranterToken.Award(Agent)
+
+    SumbitCharacterEvent(Agent : agent):void=
+        CharacteranalyticsDevice.Submit(Agent)
+        Print("Character event sumbited")
+
+    GiveKillXp(MaybeAgent : ?agent):void=
+        if(Agent := MaybeAgent?):
+            KillAccolade.Award(Agent)
+            Print("kill xp is given")
+       
+
+        
+
+
+
+    
+
+    
+
+        
+
+        
+ 
+  
+  
+   
+        
+        
